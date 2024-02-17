@@ -1,0 +1,25 @@
+{
+    "name": "hexlet/code",
+    "description": "PHPUnit test training",
+    "type": "project",
+    "require": {
+        "guzzlehttp/guzzle": "^7.8",
+        "docopt/docopt": "^1.0"
+    },
+    "bin": [
+        "bin/page-diff"
+    ],
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/",
+            "Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Mikhail Tsepelev",
+            "email": "cplvmhl@gmail.com"
+        }
+    ]
+}
