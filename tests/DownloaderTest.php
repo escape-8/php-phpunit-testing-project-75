@@ -25,21 +25,22 @@ class DownloaderTest extends TestCase
      */
     public function setUp(): void
     {
+        $expected = file_get_contents("tests/fixtures/simple-testfile-com.html");
         $this->client = $this->createMock(Client::class);
         $this->response = $this->createMock(ResponseInterface::class);
         $this->streamData = $this->createMock(StreamInterface::class);
+        $this->client->method('get')->willReturn($this->response);
+        $this->response->method('getBody')->willReturn($this->streamData);
+        $this->streamData->method('getContents')->willReturn($expected);
         $this->root = vfsStream::setup('home/tests');
         $this->outputPath = vfsStream::url('home/tests');
     }
 
     public function testDownloaderBase(): void
     {
-        $expected = file_get_contents("tests/fixtures/simple-testfile-com.html");
-        $this->client->method('get')->willReturn($this->response);
-        $this->response->method('getBody')->willReturn($this->streamData);
-        $this->streamData->method('getContents')->willReturn($expected);
+        $expected = 'www-test-com.html';
         downloadPage("https://www.test.com", $this->outputPath, $this->client);
-        $actual = file_get_contents($this->outputPath . '/www-test-com.html');
+        $actual = basename($this->outputPath . '/www-test-com.html');
         $this->assertSame($expected, $actual);
     }
 
