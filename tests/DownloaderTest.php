@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use DiDom\Document;
 use GuzzleHttp\Client;
 use PHPUnit\Framework\MockObject\Exception;
 use PHPUnit\Framework\TestCase;
@@ -11,6 +12,9 @@ use org\bovigo\vfs\vfsStream,
     org\bovigo\vfs\vfsStreamDirectory;
 
 use function Downloader\Downloader\downloadPage;
+use function Downloader\Downloader\downloadImages;
+use function Downloader\Downloader\downloadAssets;
+use function Downloader\Downloader\replaceAttributes;
 
 class DownloaderTest extends TestCase
 {
@@ -50,5 +54,42 @@ class DownloaderTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Directory \"$outputPath\" was not created");
         downloadPage("https://www.test.com", $outputPath, $this->client);
+    }
+
+    public function testDownloaderDirectoryExists(): void
+    {
+        $expected = file_get_contents("tests/fixtures/simple-testfile-com.html");
+        downloadAssets(new Document($expected), "https://www.test.com", $this->outputPath, $this->client);
+        $actual = is_dir($this->outputPath . '/www-test-com_files');
+        $this->assertTrue($actual);
+    }
+
+    public function testDownloaderImage(): void
+    {
+        $data = file_get_contents("tests/fixtures/simple-testfile-com.html");
+        $this->client->method('request')->willReturn($this->response);
+        $imgLinks = downloadImages(new Document($data),
+            'https://www.test.com',
+            $this->outputPath . '/www-test-com_files',
+            $this->client
+        );
+        $expected = 'www-test-com_files/www-test-com-assets-test-image.png';
+        $actual = $imgLinks[0];
+        $this->assertEquals($expected, $actual);
+    }
+
+    public function testDownloaderChangeHTML(): void
+    {
+        $file = $this->outputPath . '/www-test-com.html';
+        $document = new Document("tests/fixtures/simple-testfile-com.html", true);
+        $assets = ['img' => ['www-test-com_files/www-test-com-assets-test-image.png']];
+        replaceAttributes($document, $file, 'img', 'src', $assets);
+        $documentWithReplacement = new Document($file, true);
+        $imgTags = $documentWithReplacement->find('img');
+        $expectedSrc = 'www-test-com_files/www-test-com-assets-test-image.png';
+        foreach ($imgTags as $imgTag) {
+            $src = $imgTag->getAttribute('src');
+            $this->assertEquals($expectedSrc, $src);
+        }
     }
 }
