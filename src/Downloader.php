@@ -15,8 +15,9 @@ function downloadPage(string $url, string $outputPath, $clientClass): string
     }
     $file = "$outputPath/$outputFilename";
     file_put_contents($file, $content);
-    $assets = downloadAssets(new Document($file, true), $url, $outputPath, $clientClass);
-    replaceAttributes(new Document($file, true), $file, 'img', 'src', $assets);
+    $resourceTags = ['img' => 'src'];
+    $assets = downloadAssets(new Document($file, true), $resourceTags, $url, $outputPath, $clientClass);
+    replaceAttributes(new Document($file, true), $file, $resourceTags, $assets);
 
     return "Page was successfully downloaded into $outputPath/$outputFilename\n";
 }
@@ -27,7 +28,7 @@ function createNameFromUrl(string $url, string $endName, string $separatorFrom, 
     $name = implode($separatorTo, explode($separatorFrom, $data));
     return $name . $endName;
 }
-function downloadAssets(Document $document, string $url, string $outputPath, $client): array
+function downloadAssets(Document $document, array $resourceTags, string $url, string $outputPath, $client): array
 {
     $assetsDirName = createNameFromUrl($url, '_files', '.', '-');
     if (!is_dir("$outputPath/$assetsDirName")) {
@@ -35,33 +36,29 @@ function downloadAssets(Document $document, string $url, string $outputPath, $cl
             throw new \RuntimeException(sprintf('Directory "%s" was not created', "$outputPath/$assetsDirName"));
         }
     }
+
     $assetsLinks = [];
-    $assetsLinks['img'] = downloadImages($document, $url, "$outputPath/$assetsDirName", $client);
+    $baseName = createNameFromUrl($url, '', '.', '-');
+    foreach ($resourceTags as $tagName => $resourceAttr) {
+        $tags = $document->find($tagName);
+        foreach ($tags as $tag) {
+            $path = $tag->getAttribute($resourceAttr);
+            $savingFileName = $baseName . createNameFromUrl($path, '', '/', '-');
+            $client->request('GET', $url . $path, ['sink' => "$outputPath/$assetsDirName/$savingFileName"]);
+            $assetsLinks[$tagName][] = "$assetsDirName/$savingFileName";
+        }
+    }
     return $assetsLinks;
 }
 
-function downloadImages(Document $document, string $url, string $outputPath, $client): array
+function replaceAttributes(Document $document, string $file, array $resourceTags, array $values): void
 {
-
-    $imagePaths = [];
-    $assetDir = basename($outputPath);
-    $imageTags = $document->find('img');
-    $imageBaseName = createNameFromUrl($url, '', '.', '-');
-    foreach ($imageTags as $imageTag) {
-        $imageLink = $imageTag->getAttribute('src');
-        $saveImageName = $imageBaseName .  createNameFromUrl($imageLink, '', '/', '-');
-        $client->request('GET', $url . $imageLink, ['sink' => "$outputPath/$saveImageName"]);
-        $imagePaths[] = "$assetDir/$saveImageName";
-    }
-    return $imagePaths;
-}
-
-function replaceAttributes(Document $document, string $file, string $tagName, string $attrName, array $values): void
-{
-    $tags = $document->find($tagName);
-    $changeValues = $values[$tagName];
-    foreach ($tags as $index => $tag) {
-        $tag->setAttribute($attrName, $changeValues[$index]);
+    foreach ($resourceTags as $tagName => $resourceAttr) {
+        $tags = $document->find($tagName);
+        $replaceValues = $values[$tagName];
+        foreach ($tags as $index => $tag) {
+            $tag->setAttribute($resourceAttr, $replaceValues[$index]);
+        }
     }
     file_put_contents($file, $document->html());
 }
