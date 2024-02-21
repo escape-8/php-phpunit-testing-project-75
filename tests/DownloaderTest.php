@@ -59,31 +59,20 @@ class DownloaderTest extends TestCase
     public function testDownloaderDirectoryExists(): void
     {
         $expected = file_get_contents("tests/fixtures/simple-testfile-com.html");
-        downloadAssets(new Document($expected), "https://www.test.com", $this->outputPath, $this->client);
+        $resourceTags = ['img' => 'src'];
+        downloadAssets(new Document($expected), $resourceTags, "https://www.test.com", $this->outputPath, $this->client);
         $actual = is_dir($this->outputPath . '/www-test-com_files');
         $this->assertTrue($actual);
     }
 
-    public function testDownloaderImage(): void
-    {
-        $data = file_get_contents("tests/fixtures/simple-testfile-com.html");
-        $this->client->method('request')->willReturn($this->response);
-        $imgLinks = downloadImages(new Document($data),
-            'https://www.test.com',
-            $this->outputPath . '/www-test-com_files',
-            $this->client
-        );
-        $expected = 'www-test-com_files/www-test-com-assets-test-image.png';
-        $actual = $imgLinks[0];
-        $this->assertEquals($expected, $actual);
-    }
 
     public function testDownloaderChangeHTML(): void
     {
         $file = $this->outputPath . '/www-test-com.html';
+        $resourceTags = ['img' => 'src'];
         $document = new Document("tests/fixtures/simple-testfile-com.html", true);
         $assets = ['img' => ['www-test-com_files/www-test-com-assets-test-image.png']];
-        replaceAttributes($document, $file, 'img', 'src', $assets);
+        replaceAttributes($document, $file, $resourceTags, $assets);
         $documentWithReplacement = new Document($file, true);
         $imgTags = $documentWithReplacement->find('img');
         $expectedSrc = 'www-test-com_files/www-test-com-assets-test-image.png';
