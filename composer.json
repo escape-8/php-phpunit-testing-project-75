@@ -5,7 +5,8 @@
     "require": {
         "guzzlehttp/guzzle": "^7.8",
         "docopt/docopt": "^1.0",
-        "imangazaliev/didom": "^2.0"
+        "imangazaliev/didom": "^2.0",
+        "monolog/monolog": "^3.5"
     },
     "bin": [
         "bin/page-diff"
