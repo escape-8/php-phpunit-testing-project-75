@@ -3,21 +3,38 @@
 namespace Downloader\Downloader;
 
 use DiDom\Document;
+use Monolog\Level;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 function downloadPage(string $url, string $outputPath, $clientClass): string
 {
+    createDirectory($outputPath);
+    $logFileName = basename($outputPath) . '.log';
+    $log = new Logger($logFileName);
+    $log->pushHandler(new StreamHandler("$outputPath/$logFileName", Level::Debug));
+
+    $log->info('Save logs in', ["$outputPath/$logFileName"]);
+    $log->info('Download content from', [$url]);
+
     $content = $clientClass->get($url)->getBody()->getContents();
     $outputFilename = createNameFromUrl($url, '.html');
-    createDirectory($outputPath);
     $file = "$outputPath/$outputFilename";
     file_put_contents($file, $content);
+    $log->info('Page create', [$file]);
+
     $resourceTags = [
         'img' => 'src',
         'link' => 'href',
         'script' => 'src',
         ];
+    $log->info('Download assets from tags', $resourceTags);
     $assets = downloadAssets(new Document($file, true), $resourceTags, $url, $outputPath, $clientClass);
+    $log->info('Download Assets successful in', [$outputPath]);
+
+    $log->info('Change URL assets from', [$file]);
     replaceAttributes(new Document($file, true), $file, $resourceTags, $assets);
+    $log->info('Change URL Assets successful in', [$file]);
 
     return "Page was successfully downloaded into $outputPath/$outputFilename\n";
 }
