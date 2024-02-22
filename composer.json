@@ -9,7 +9,7 @@
         "monolog/monolog": "^3.5"
     },
     "bin": [
-        "bin/page-diff"
+        "bin/page-loader"
     ],
     "license": "MIT",
     "autoload": {
