@@ -25,11 +25,8 @@ function downloadPage(string $url, string $outputPath, $clientClass): void
     $log->info('Save logs in', ["$outputPath/$logFileName"]);
     $log->info('Download content from', [$url]);
 
-    $response = $clientClass->get($url);
-    if ($response->getStatusCode() === 404) {
-        throw new RuntimeException('Page Not Found');
-    }
-    $content = $response->getBody()->getContents();
+    $client = new $clientClass();
+    $content= $client->get($url)->getBody()->getContents();
     $outputFilename = createNameFromUrl($url, '.html');
     $file = "$outputPath/$outputFilename";
     file_put_contents($file, $content);
@@ -41,7 +38,7 @@ function downloadPage(string $url, string $outputPath, $clientClass): void
         'script' => 'src',
         ];
     $log->info('Download assets from tags', $resourceTags);
-    $assets = downloadAssets(new Document($file, true), $resourceTags, $url, $outputPath, $clientClass);
+    $assets = downloadAssets(new Document($file, true), $resourceTags, $url, $outputPath, $client);
     $log->info('Download Assets successful in', [$outputPath]);
 
     $log->info('Change URL assets from', [$file]);
