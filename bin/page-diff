@@ -30,7 +30,7 @@ $client = Client::class;
 $outputPath = $args['--output'] === $defaultPath ? $defaultPath : $defaultPath . ltrim($args['--output'], ".");
 
 try {
-    downloadPage($args['<url>'], $outputPath, new $client);
+    downloadPage($args['<url>'], $outputPath, $client);
 } catch (\Exception $e) {
     echo $e->getMessage();
 }
