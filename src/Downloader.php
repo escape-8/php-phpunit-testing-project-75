@@ -7,45 +7,72 @@ use DiDom\Document;
 function downloadPage(string $url, string $outputPath, $clientClass): string
 {
     $content = $clientClass->get($url)->getBody()->getContents();
-    $outputFilename = createNameFromUrl($url, '.html', '.', '-');
-    if (!is_dir($outputPath)) {
-        if (!mkdir($outputPath) && !is_dir($outputPath)) {
-            throw new \RuntimeException(sprintf('Directory "%s" was not created', $outputPath));
-        }
-    }
+    $outputFilename = createNameFromUrl($url, '.html');
+    createDirectory($outputPath);
     $file = "$outputPath/$outputFilename";
     file_put_contents($file, $content);
-    $resourceTags = ['img' => 'src'];
+    $resourceTags = [
+        'img' => 'src',
+        'link' => 'href',
+        'script' => 'src',
+        ];
     $assets = downloadAssets(new Document($file, true), $resourceTags, $url, $outputPath, $clientClass);
     replaceAttributes(new Document($file, true), $file, $resourceTags, $assets);
 
     return "Page was successfully downloaded into $outputPath/$outputFilename\n";
 }
 
-function createNameFromUrl(string $url, string $endName, string $separatorFrom, string $separatorTo): string
+function createNameFromUrl(string $url, string $endName = ''): string
 {
-    $data = parse_url($url)['host'] ?? $url;
-    $name = implode($separatorTo, explode($separatorFrom, $data));
+    $data = [];
+    $parsedUrl = parse_url($url);
+    if (array_key_exists('host', $parsedUrl)) {
+        $data[] = str_replace('.', '-', $parsedUrl['host']);
+    }
+    if (array_key_exists('path', $parsedUrl)) {
+        if ($parsedUrl['path'] === '/') {
+            $data[] = '';
+        } else {
+            $data[] = str_replace('/', '-', $parsedUrl['path']);
+        }
+    }
+    $name = implode('', $data);
     return $name . $endName;
 }
 function downloadAssets(Document $document, array $resourceTags, string $url, string $outputPath, $client): array
 {
-    $assetsDirName = createNameFromUrl($url, '_files', '.', '-');
-    if (!is_dir("$outputPath/$assetsDirName")) {
-        if (!mkdir("$outputPath/$assetsDirName") && !is_dir("$outputPath/$assetsDirName")) {
-            throw new \RuntimeException(sprintf('Directory "%s" was not created', "$outputPath/$assetsDirName"));
-        }
-    }
+    $assetsDirName = createNameFromUrl($url, '_files');
+    createDirectory("$outputPath/$assetsDirName");
 
     $assetsLinks = [];
-    $baseName = createNameFromUrl($url, '', '.', '-');
+    $hostUrl = parse_url($url);
+    $hostUrlString = $hostUrl['scheme'] . '://' . $hostUrl['host'];
+
     foreach ($resourceTags as $tagName => $resourceAttr) {
         $tags = $document->find($tagName);
-        foreach ($tags as $tag) {
-            $path = $tag->getAttribute($resourceAttr);
-            $savingFileName = $baseName . createNameFromUrl($path, '', '/', '-');
-            $client->request('GET', $url . $path, ['sink' => "$outputPath/$assetsDirName/$savingFileName"]);
-            $assetsLinks[$tagName][] = "$assetsDirName/$savingFileName";
+        if ($tags) {
+            foreach ($tags as $tag) {
+                $pathResource = $tag->getAttribute($resourceAttr);
+                $saveDirectory = "$outputPath/$assetsDirName";
+                if ($pathResource && isUrl($pathResource)) {
+                    if (isInternalUrl($pathResource, $hostUrlString)) {
+                        $savingFileName = createNameFromUrl($pathResource);
+                        downloadFile($pathResource, "$saveDirectory/$savingFileName", $client);
+                        $assetsLinks[$tagName][] = "$assetsDirName/$savingFileName";
+                    } else {
+                        $assetsLinks[$tagName][] = $pathResource;
+                    }
+                } else {
+                    $link = $hostUrlString . $pathResource;
+                    if ($link === $url) {
+                        $savingFileName = createNameFromUrl($link, '.html');
+                    } else {
+                        $savingFileName = createNameFromUrl($link);
+                    }
+                    downloadFile($link, "$saveDirectory/$savingFileName", $client);
+                    $assetsLinks[$tagName][] = "$assetsDirName/$savingFileName";
+                }
+            }
         }
     }
     return $assetsLinks;
@@ -55,11 +82,39 @@ function replaceAttributes(Document $document, string $file, array $resourceTags
 {
     foreach ($resourceTags as $tagName => $resourceAttr) {
         $tags = $document->find($tagName);
-        $replaceValues = $values[$tagName];
-        foreach ($tags as $index => $tag) {
-            $tag->setAttribute($resourceAttr, $replaceValues[$index]);
+        if ($tags) {
+            $replaceValues = $values[$tagName];
+            foreach ($tags as $index => $tag) {
+                $tag->setAttribute($resourceAttr, $replaceValues[$index]);
+            }
         }
     }
     file_put_contents($file, $document->html());
 }
 
+function isUrl(string $resource): bool
+{
+    return array_key_exists('host', parse_url($resource));
+}
+
+function createDirectory(string $path): void
+{
+    if (!is_dir($path)) {
+        if (!mkdir($path) && !is_dir($path)) {
+            throw new \RuntimeException(sprintf('Directory "%s" was not created', $path));
+        }
+    }
+}
+
+function downloadFile(string $downloadLink, string $saveTo, $client): void
+{
+    $client->request('GET', $downloadLink, ['sink' => $saveTo]);
+}
+
+function isInternalUrl(string $compareUrl, string $baseUrl): bool
+{
+    $linkHost = parse_url($compareUrl, PHP_URL_HOST);
+    $baseHost = parse_url($baseUrl, PHP_URL_HOST);
+
+    return $linkHost === $baseHost;
+}
