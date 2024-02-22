@@ -39,6 +39,7 @@ class DownloaderTest extends TestCase
         $this->streamData->method('getContents')->willReturn($expected);
         $this->root = vfsStream::setup('home/tests');
         $this->outputPath = vfsStream::url('home/tests');
+        var_dump($this->client);
 
         $this->expectedData = [
             'img' => ['www-test-com-courses_files/www-test-com-assets-test-image.png'],

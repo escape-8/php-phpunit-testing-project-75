@@ -3,13 +3,21 @@
 namespace Downloader\Downloader;
 
 use DiDom\Document;
+use DiDom\Exceptions\InvalidSelectorException;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use http\Exception\RuntimeException;
 use Monolog\Level;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
+
+/**
+ * @throws GuzzleException
+ */
 function downloadPage(string $url, string $outputPath, Client $clientClass): void
 {
+    var_dump($clientClass);
     createDirectory($outputPath);
     $logFileName = basename($outputPath) . '.log';
     $log = new Logger($logFileName);
@@ -17,7 +25,12 @@ function downloadPage(string $url, string $outputPath, Client $clientClass): voi
 
     $log->info('Save logs in', ["$outputPath/$logFileName"]);
     $log->info('Download content from', [$url]);
-    $content = $clientClass->get($url)->getBody()->getContents();
+    $response = $clientClass->get($url);
+    var_dump($response);
+    if ($response->getStatusCode() === 404) {
+        throw new RuntimeException('Page Not Found');
+    }
+    $content = $response->getBody()->getContents();
     $outputFilename = createNameFromUrl($url, '.html');
     $file = "$outputPath/$outputFilename";
     file_put_contents($file, $content);
@@ -56,6 +69,11 @@ function createNameFromUrl(string $url, string $endName = ''): string
     $name = implode('', $data);
     return $name . $endName;
 }
+
+/**
+ * @throws GuzzleException
+ * @throws InvalidSelectorException
+ */
 function downloadAssets(Document $document, array $resourceTags, string $url, string $outputPath, Client $client): array
 {
     $assetsDirName = createNameFromUrl($url, '_files');
@@ -123,6 +141,9 @@ function createDirectory(string $path): void
     }
 }
 
+/**
+ * @throws GuzzleException
+ */
 function downloadFile(string $downloadLink, string $saveTo, Client $client): void
 {
     $client->request('GET', $downloadLink, ['sink' => $saveTo]);
