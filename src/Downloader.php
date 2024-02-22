@@ -7,7 +7,7 @@ use Monolog\Level;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
-function downloadPage(string $url, string $outputPath, $clientClass): string
+function downloadPage(string $url, string $outputPath, $clientClass): void
 {
     createDirectory($outputPath);
     $logFileName = basename($outputPath) . '.log';
@@ -16,7 +16,7 @@ function downloadPage(string $url, string $outputPath, $clientClass): string
 
     $log->info('Save logs in', ["$outputPath/$logFileName"]);
     $log->info('Download content from', [$url]);
-
+    var_dump($clientClass);
     $content = $clientClass->get($url)->getBody()->getContents();
     $outputFilename = createNameFromUrl($url, '.html');
     $file = "$outputPath/$outputFilename";
@@ -36,7 +36,7 @@ function downloadPage(string $url, string $outputPath, $clientClass): string
     replaceAttributes(new Document($file, true), $file, $resourceTags, $assets);
     $log->info('Change URL Assets successful in', [$file]);
 
-    return "Page was successfully downloaded into $outputPath/$outputFilename\n";
+    echo "Page was successfully downloaded into $outputPath/$outputFilename\n";
 }
 
 function createNameFromUrl(string $url, string $endName = ''): string
