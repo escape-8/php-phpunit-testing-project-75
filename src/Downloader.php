@@ -15,9 +15,8 @@ use Monolog\Handler\StreamHandler;
 /**
  * @throws GuzzleException
  */
-function downloadPage(string $url, string $outputPath, Client $clientClass): void
+function downloadPage(string $url, string $outputPath, $clientClass): void
 {
-    var_dump($clientClass);
     createDirectory($outputPath);
     $logFileName = basename($outputPath) . '.log';
     $log = new Logger($logFileName);
@@ -25,8 +24,8 @@ function downloadPage(string $url, string $outputPath, Client $clientClass): voi
 
     $log->info('Save logs in', ["$outputPath/$logFileName"]);
     $log->info('Download content from', [$url]);
+
     $response = $clientClass->get($url);
-    var_dump($response);
     if ($response->getStatusCode() === 404) {
         throw new RuntimeException('Page Not Found');
     }
@@ -74,7 +73,7 @@ function createNameFromUrl(string $url, string $endName = ''): string
  * @throws GuzzleException
  * @throws InvalidSelectorException
  */
-function downloadAssets(Document $document, array $resourceTags, string $url, string $outputPath, Client $client): array
+function downloadAssets(Document $document, array $resourceTags, string $url, string $outputPath, $client): array
 {
     $assetsDirName = createNameFromUrl($url, '_files');
     createDirectory("$outputPath/$assetsDirName");
@@ -144,7 +143,7 @@ function createDirectory(string $path): void
 /**
  * @throws GuzzleException
  */
-function downloadFile(string $downloadLink, string $saveTo, Client $client): void
+function downloadFile(string $downloadLink, string $saveTo, $client): void
 {
     $client->request('GET', $downloadLink, ['sink' => $saveTo]);
 }
