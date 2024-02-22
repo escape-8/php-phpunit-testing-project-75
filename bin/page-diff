@@ -28,5 +28,10 @@ $args = Docopt::handle($doc, array('version' => 'Page Loader 1.0'));
 
 $client = new Client();
 $outputPath = $args['--output'] === $defaultPath ? $defaultPath : $defaultPath . ltrim($args['--output'], ".");
-$x = downloadPage($args['<url>'], $outputPath, $client);
-print_r($x);
+
+try {
+    $result = downloadPage($args['<url>'], $outputPath, $client);
+    print_r($result);
+} catch (\Exception $e) {
+    echo $e->getMessage();
+}
