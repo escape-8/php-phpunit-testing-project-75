@@ -26,10 +26,11 @@ $doc = <<<DOC
 
 $args = Docopt::handle($doc, array('version' => 'Page Loader 1.0'));
 
+$client = Client::class;
 $outputPath = $args['--output'] === $defaultPath ? $defaultPath : $defaultPath . ltrim($args['--output'], ".");
 
 try {
-    downloadPage($args['<url>'], $outputPath, new Client());
+    downloadPage($args['<url>'], $outputPath, new $client);
 } catch (\Exception $e) {
     echo $e->getMessage();
 }
