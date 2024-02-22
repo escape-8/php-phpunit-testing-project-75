@@ -12,7 +12,6 @@ use org\bovigo\vfs\vfsStream,
     org\bovigo\vfs\vfsStreamDirectory;
 
 use function Downloader\Downloader\downloadPage;
-use function Downloader\Downloader\downloadImages;
 use function Downloader\Downloader\downloadAssets;
 use function Downloader\Downloader\replaceAttributes;
 
@@ -23,6 +22,8 @@ class DownloaderTest extends TestCase
     private StreamInterface $streamData;
     private vfsStreamDirectory $root;
     private string $outputPath;
+    private array $expectedData;
+    private array $resourceTags;
 
     /**
      * @throws Exception
@@ -38,14 +39,38 @@ class DownloaderTest extends TestCase
         $this->streamData->method('getContents')->willReturn($expected);
         $this->root = vfsStream::setup('home/tests');
         $this->outputPath = vfsStream::url('home/tests');
+
+        $this->expectedData = [
+            'img' => ['www-test-com-courses_files/www-test-com-assets-test-image.png'],
+            'link' => [
+                'https://cdn2.test.com/assets/menu.css',
+                'www-test-com-courses_files/www-test-com-assets-application.css',
+                'www-test-com-courses_files/www-test-com-courses.html',
+            ],
+            'script' => [
+                'https://js.stripe.com/v3/',
+                'www-test-com-courses_files/www-test-com-packs-js-runtime.js',
+            ],
+        ];
+        $this->resourceTags = [
+            'img' => 'src',
+            'link' => 'href',
+            'script' => 'src',
+        ];
     }
 
-    public function testDownloaderBase(): void
+    public function testDownloaderCreatePageFile(): void
     {
-        $expected = 'www-test-com.html';
         downloadPage("https://www.test.com", $this->outputPath, $this->client);
-        $actual = basename($this->outputPath . '/www-test-com.html');
-        $this->assertSame($expected, $actual);
+        $actual = file_exists($this->outputPath . '/www-test-com.html');
+        $this->assertTrue($actual);
+    }
+
+    public function testDownloaderCreatePageFileWithPath(): void
+    {
+        downloadPage("https://www.test.com/courses", $this->outputPath, $this->client);
+        $actual = file_exists($this->outputPath . '/www-test-com-courses.html');
+        $this->assertTrue($actual);
     }
 
     public function testDownloaderException(): void
@@ -53,32 +78,83 @@ class DownloaderTest extends TestCase
         $outputPath = $this->outputPath . '/path/to/nonexistent/directory';
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage("Directory \"$outputPath\" was not created");
-        downloadPage("https://www.test.com", $outputPath, $this->client);
+        downloadPage("https://www.test.com/courses", $outputPath, $this->client);
     }
 
-    public function testDownloaderDirectoryExists(): void
+    public function testDownloaderCreateAssetsDirectory(): void
     {
-        $expected = file_get_contents("tests/fixtures/simple-testfile-com.html");
-        $resourceTags = ['img' => 'src'];
-        downloadAssets(new Document($expected), $resourceTags, "https://www.test.com", $this->outputPath, $this->client);
-        $actual = is_dir($this->outputPath . '/www-test-com_files');
+        $file = file_get_contents("tests/fixtures/simple-testfile-com.html");
+        downloadAssets(new Document($file), $this->resourceTags, "https://www.test.com/courses", $this->outputPath, $this->client);
+        $actual = is_dir($this->outputPath . '/www-test-com-courses_files');
         $this->assertTrue($actual);
     }
 
-
-    public function testDownloaderChangeHTML(): void
+    public function testDownloaderAssetsTagImg(): void
     {
-        $file = $this->outputPath . '/www-test-com.html';
-        $resourceTags = ['img' => 'src'];
+        $expected = $this->expectedData['img'];
         $document = new Document("tests/fixtures/simple-testfile-com.html", true);
-        $assets = ['img' => ['www-test-com_files/www-test-com-assets-test-image.png']];
-        replaceAttributes($document, $file, $resourceTags, $assets);
+        $actual = downloadAssets($document, $this->resourceTags, "https://www.test.com/courses", $this->outputPath, $this->client);
+        foreach ($actual['img'] as $index => $link) {
+            $this->assertEquals($expected[$index], $link);
+        }
+    }
+
+    public function testDownloaderAssetsTagLink(): void
+    {
+        $expected = $this->expectedData['link'];
+        $document = new Document("tests/fixtures/simple-testfile-com.html", true);
+        $actual = downloadAssets($document, $this->resourceTags, "https://www.test.com/courses", $this->outputPath, $this->client);
+        foreach ($actual['link'] as $index => $link) {
+            $this->assertEquals($expected[$index], $link);
+        }
+    }
+
+    public function testDownloaderAssetsTagScript(): void
+    {
+        $expected = $this->expectedData['script'];
+        $document = new Document("tests/fixtures/simple-testfile-com.html", true);
+        $actual = downloadAssets($document, $this->resourceTags, "https://www.test.com/courses", $this->outputPath, $this->client);
+        foreach ($actual['script'] as $index => $link) {
+            $this->assertEquals($expected[$index], $link);
+        }
+    }
+
+    public function testDownloaderChangeImgTagSrcPath(): void
+    {
+        $file = $this->outputPath . '/www-test-com-courses.html';
+        $document = new Document("tests/fixtures/simple-testfile-com.html", true);
+        replaceAttributes($document, $file, $this->resourceTags, $this->expectedData);
         $documentWithReplacement = new Document($file, true);
         $imgTags = $documentWithReplacement->find('img');
-        $expectedSrc = 'www-test-com_files/www-test-com-assets-test-image.png';
-        foreach ($imgTags as $imgTag) {
+        foreach ($imgTags as $index => $imgTag) {
             $src = $imgTag->getAttribute('src');
-            $this->assertEquals($expectedSrc, $src);
+            $this->assertEquals($this->expectedData['img'][$index], $src);
+        }
+    }
+
+    public function testDownloaderChangeLinkTagHrefPath(): void
+    {
+        $file = $this->outputPath . '/www-test-com-courses.html';
+        $document = new Document("tests/fixtures/simple-testfile-com.html", true);
+        replaceAttributes($document, $file, $this->resourceTags, $this->expectedData);
+        $documentWithReplacement = new Document($file, true);
+        $linkTags = $documentWithReplacement->find('link');
+        foreach ($linkTags as $index => $linkTag) {
+            $href = $linkTag->getAttribute('href');
+            $this->assertEquals($this->expectedData['link'][$index], $href);
+        }
+    }
+
+    public function testDownloaderChangeScriptTagSrcPath(): void
+    {
+        $file = $this->outputPath . '/www-test-com-courses.html';
+        $document = new Document("tests/fixtures/simple-testfile-com.html", true);
+        replaceAttributes($document, $file, $this->resourceTags, $this->expectedData);
+        $documentWithReplacement = new Document($file, true);
+        $linkTags = $documentWithReplacement->find('script');
+        foreach ($linkTags as $index => $linkTag) {
+            $href = $linkTag->getAttribute('src');
+            $this->assertEquals($this->expectedData['script'][$index], $href);
         }
     }
 }
