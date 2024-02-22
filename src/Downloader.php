@@ -15,7 +15,7 @@ use Monolog\Handler\StreamHandler;
 /**
  * @throws GuzzleException
  */
-function downloadPage(string $url, string $outputPath, $clientClass): void
+function downloadPage(string $url, string $outputPath, $clientClass): string
 {
     createDirectory($outputPath);
     $logFileName = basename($outputPath) . '.log';
@@ -46,6 +46,7 @@ function downloadPage(string $url, string $outputPath, $clientClass): void
     $log->info('Change URL Assets successful in', [$file]);
 
     echo "Page was successfully downloaded into $outputPath/$outputFilename\n";
+    return "$outputPath/$outputFilename";
 }
 
 function createNameFromUrl(string $url, string $endName = ''): string
