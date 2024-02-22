@@ -29,4 +29,4 @@ $args = Docopt::handle($doc, array('version' => 'Page Loader 1.0'));
 $clientClass = Client::class;
 $outputPath = $args['--output'] === $defaultPath ? $defaultPath : $defaultPath . ltrim($args['--output'], ".");
 
-downloadPage($args['<url>'], $outputPath, new $clientClass());
+downloadPage($args['<url>'], $outputPath, $clientClass);
