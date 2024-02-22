@@ -3,11 +3,12 @@
 namespace Downloader\Downloader;
 
 use DiDom\Document;
+use GuzzleHttp\Client;
 use Monolog\Level;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
-function downloadPage(string $url, string $outputPath, $clientClass): void
+function downloadPage(string $url, string $outputPath, Client $clientClass): void
 {
     createDirectory($outputPath);
     $logFileName = basename($outputPath) . '.log';
@@ -16,7 +17,6 @@ function downloadPage(string $url, string $outputPath, $clientClass): void
 
     $log->info('Save logs in', ["$outputPath/$logFileName"]);
     $log->info('Download content from', [$url]);
-    var_dump($clientClass);
     $content = $clientClass->get($url)->getBody()->getContents();
     $outputFilename = createNameFromUrl($url, '.html');
     $file = "$outputPath/$outputFilename";
@@ -56,7 +56,7 @@ function createNameFromUrl(string $url, string $endName = ''): string
     $name = implode('', $data);
     return $name . $endName;
 }
-function downloadAssets(Document $document, array $resourceTags, string $url, string $outputPath, $client): array
+function downloadAssets(Document $document, array $resourceTags, string $url, string $outputPath, Client $client): array
 {
     $assetsDirName = createNameFromUrl($url, '_files');
     createDirectory("$outputPath/$assetsDirName");
@@ -123,7 +123,7 @@ function createDirectory(string $path): void
     }
 }
 
-function downloadFile(string $downloadLink, string $saveTo, $client): void
+function downloadFile(string $downloadLink, string $saveTo, Client $client): void
 {
     $client->request('GET', $downloadLink, ['sink' => $saveTo]);
 }
