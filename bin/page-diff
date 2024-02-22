@@ -26,7 +26,8 @@ $doc = <<<DOC
 
 $args = Docopt::handle($doc, array('version' => 'Page Loader 1.0'));
 
-$client = Client::class;
+$clientName = Client::class;
+$client = new $clientName();
 $outputPath = $args['--output'] === $defaultPath ? $defaultPath : $defaultPath . ltrim($args['--output'], ".");
 
 try {
