@@ -1,4 +1,4 @@
-#!/usr/bin/env php
+#! /usr/bin/env php
 
 <?php
 
@@ -33,4 +33,8 @@ $args = Docopt::handle($doc, array('version' => 'Page Loader 1.0'));
 $clientClass = Client::class;
 $outputPath = $args['--output'] === $defaultPath ? $defaultPath : $defaultPath . ltrim($args['--output'], ".");
 
-downloadPage($args['<url>'], $outputPath, $clientClass);
+try {
+    downloadPage($args['<url>'], $outputPath, $clientClass);
+} catch (\Exception $e) {
+    echo $e->getMessage();
+}
