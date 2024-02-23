@@ -26,7 +26,7 @@ function downloadPage(string $url, string $outputPath, $clientClass): string
     $log->info('Download content from', [$url]);
 
     $client = new $clientClass();
-    $content= $client->get($url)->getBody()->getContents();
+    $content = $client->get($url)->getBody()->getContents();
     $outputFilename = createNameFromUrl($url, '.html');
     $file = "$outputPath/$outputFilename";
     file_put_contents($file, $content);
@@ -54,16 +54,13 @@ function createNameFromUrl(string $url, string $endName = ''): string
     $data = [];
     $parsedUrl = parse_url($url);
     if (array_key_exists('host', $parsedUrl)) {
-        $data[] = str_replace('.', '-', $parsedUrl['host']);
+        $data = array_merge($data, explode('.',$parsedUrl['host']));
     }
     if (array_key_exists('path', $parsedUrl)) {
-        if ($parsedUrl['path'] === '/') {
-            $data[] = '';
-        } else {
-            $data[] = str_replace('/', '-', $parsedUrl['path']);
-        }
+        $data = array_merge($data, explode('/', $parsedUrl['path']));
     }
-    $name = implode('', $data);
+    $dataWithoutEmptyValue = array_filter($data, fn(string $value) => $value !== '');
+    $name = implode('-', $dataWithoutEmptyValue);
     return $name . $endName;
 }
 
@@ -78,7 +75,7 @@ function downloadAssets(Document $document, array $resourceTags, string $url, st
 
     $assetsLinks = [];
     $hostUrl = parse_url($url);
-    $hostUrlString = $hostUrl['scheme'] . '://' . $hostUrl['host'];
+    $hostUrlString = $hostUrl['scheme'] . '://' . $hostUrl['host'] . '/';
 
     foreach ($resourceTags as $tagName => $resourceAttr) {
         $tags = $document->find($tagName);
